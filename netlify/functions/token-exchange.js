@@ -9,6 +9,12 @@ exports.handler = async function (event, context) {
 
   try {
     const { code } = JSON.parse(event.body);
+    if (!code) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "No code provided" }),
+      };
+    }
 
     const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
@@ -26,11 +32,22 @@ exports.handler = async function (event, context) {
 
     const tokenData = await tokenResponse.json();
 
+    if (!tokenData.access_token) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Failed to get access token",
+          details: tokenData,
+        }),
+      };
+    }
+
     return {
       statusCode: 200,
       body: JSON.stringify(tokenData),
     };
   } catch (error) {
+    console.error("Token exchange error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Failed to exchange code for token" }),
