@@ -1,10 +1,11 @@
-// Load environment variables (you'll need to use a server or build tool to actually use .env)
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const REDIRECT_URI = encodeURIComponent(process.env.DISCORD_REDIRECT_URI);
-const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+// Constants for Discord OAuth (only non-sensitive info)
+const CLIENT_ID = "1320071721579184200";
+const REDIRECT_URI = encodeURIComponent(
+  "https://cleancord.netlify.app/index.html"
+);
+const SCOPES = ["identify", "guilds", "guilds.members.read", "guilds.join"];
 
 // Create the OAuth URL
-const SCOPES = ["identify", "guilds", "guilds.members.read", "guilds.join"];
 const loginUrl = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${SCOPES.join(
   "+"
 )}`;
@@ -57,24 +58,17 @@ async function verifyAndRedirect(token) {
 
 async function exchangeCodeForToken(code) {
   try {
-    const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+    const response = await fetch("/.netlify/functions/token-exchange", {
       method: "POST",
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        grant_type: "authorization_code",
-        code: code,
-        redirect_uri: decodeURIComponent(REDIRECT_URI),
-      }),
+      body: JSON.stringify({ code }),
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json",
       },
     });
 
-    if (tokenResponse.ok) {
-      const tokenData = await tokenResponse.json();
+    if (response.ok) {
+      const tokenData = await response.json();
       localStorage.setItem("discord_token", tokenData.access_token);
-      // After getting the token, redirect to app.html
       window.location.href = "app.html";
     } else {
       console.error("Failed to exchange code for token");
