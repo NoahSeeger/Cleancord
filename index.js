@@ -1,7 +1,7 @@
 // Constants for Discord OAuth (only non-sensitive info)
 const CLIENT_ID = "1320071721579184200";
 const REDIRECT_URI = encodeURIComponent(
-  "https://cleancord.netlify.app/index.html"
+  "https://cleancord.netlify.app/app.html"
 );
 const SCOPES = ["identify", "guilds", "guilds.members.read", "guilds.join"];
 
