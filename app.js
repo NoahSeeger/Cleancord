@@ -1,16 +1,49 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("discord_token");
+  console.log("App.js - Token check:", token ? "Token exists" : "No token");
 
-  // Update nav button state
-  updateNavAuth();
+  // First check if we have a code (in case we were redirected here from Discord)
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get("code");
+
+  if (code) {
+    console.log("App.js - OAuth code found, exchanging for token");
+    try {
+      const response = await fetch("/.netlify/functions/token-exchange", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Token exchange failed");
+      }
+
+      const data = await response.json();
+      localStorage.setItem("discord_token", data.access_token);
+      // Clean up URL without redirecting
+      window.history.replaceState({}, document.title, "/app.html");
+      token = data.access_token; // Update token for continued execution
+    } catch (error) {
+      console.error("App.js - Token exchange error:", error);
+      window.location.replace("index.html");
+      return;
+    }
+  }
 
   if (!token) {
-    window.location.href = "index.html";
+    console.log("App.js - No token found, redirecting to index.html");
+    window.location.replace("index.html");
     return;
   }
 
-  // Verify token and fetch servers
   try {
+    // Update nav and verify token
+    await updateNavAuth();
+
+    // Verify token is valid
     const verifyResponse = await fetch("https://discord.com/api/users/@me", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -18,9 +51,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     if (!verifyResponse.ok) {
-      localStorage.removeItem("discord_token");
-      window.location.href = "index.html";
-      return;
+      throw new Error("Invalid token");
     }
 
     // Create containers for server display
@@ -41,14 +72,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.log("Successfully fetched servers:", servers.length);
       displayServers(servers, token);
     } else {
-      console.error("Failed to fetch servers");
-      localStorage.removeItem("discord_token");
-      window.location.href = "index.html";
+      throw new Error("Failed to fetch servers");
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error("App.js - Error:", error);
     localStorage.removeItem("discord_token");
-    window.location.href = "index.html";
+    window.location.replace("index.html");
   }
 });
 
