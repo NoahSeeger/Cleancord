@@ -1,9 +1,8 @@
-// Get URL parameters for OAuth
-const urlParams = new URLSearchParams(window.location.search);
-const code = urlParams.get("code");
-
 document.addEventListener("DOMContentLoaded", async () => {
   // Check if we're returning from Discord OAuth
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get("code");
+
   if (code) {
     // We have a code, exchange it for a token
     await exchangeCodeForToken(code);
@@ -14,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("discord_token");
   if (token) {
     try {
+      // Verify token is valid
       const response = await fetch("https://discord.com/api/users/@me", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Set up login buttons
+  // Set up login buttons with auth URL from server
   try {
     const response = await fetch("/.netlify/functions/get-auth-url");
     const { url: loginUrl } = await response.json();
