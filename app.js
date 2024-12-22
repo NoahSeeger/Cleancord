@@ -454,3 +454,133 @@ async function signOut(token) {
   localStorage.removeItem("discord_token");
   window.location.replace("index.html");
 }
+
+// Add this to your existing RateLimitHandler or create one if it doesn't exist
+class RateLimitHandler {
+  constructor() {
+    this.queue = [];
+    this.processing = false;
+    this.lastRequest = 0;
+    this.minDelay = 250; // 250ms between requests
+  }
+
+  async makeRequest(url, options) {
+    const now = Date.now();
+    const timeToWait = Math.max(0, this.lastRequest + this.minDelay - now);
+    await new Promise((resolve) => setTimeout(resolve, timeToWait));
+
+    this.lastRequest = Date.now();
+    return fetch(url, options);
+  }
+}
+
+// Add this function to create the stats button in your server element creation
+function createServerElement(server) {
+  const serverElement = document.createElement("div");
+  serverElement.className = "server-item";
+  serverElement.dataset.serverId = server.id;
+
+  // Add stats button to your existing server element
+  const statsButton = document.createElement("button");
+  statsButton.className = "stats-button";
+  statsButton.innerHTML = "📊 Stats";
+  statsButton.onclick = () => showServerStats(server.id);
+
+  // Add to your existing server element structure
+  serverElement.appendChild(statsButton);
+  return serverElement;
+}
+
+// Add the stats functionality
+async function showServerStats(serverId) {
+  const token = localStorage.getItem("discord_token");
+  const statsContainer =
+    document.getElementById(`stats-${serverId}`) ||
+    createStatsContainer(serverId);
+
+  if (statsContainer.style.display === "block") {
+    statsContainer.style.display = "none";
+    return;
+  }
+
+  // Show loading state
+  statsContainer.innerHTML = `
+        <div class="stats-loading">
+            <div class="loading-spinner"></div>
+            <span>Loading server statistics...</span>
+        </div>
+    `;
+  statsContainer.style.display = "block";
+
+  try {
+    // Use existing rate limit handler
+    const rateLimitHandler = new RateLimitHandler();
+
+    // Get member count (this endpoint is rate-limit friendly)
+    const response = await rateLimitHandler.makeRequest(
+      `https://discord.com/api/v10/guilds/${serverId}/preview`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch server stats");
+    }
+
+    const stats = await response.json();
+
+    // Update stats display
+    statsContainer.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Members</span>
+                    <span class="stat-value">${
+                      stats.approximate_member_count || "N/A"
+                    }</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Online</span>
+                    <span class="stat-value">${
+                      stats.approximate_presence_count || "N/A"
+                    }</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Emojis</span>
+                    <span class="stat-value">${stats.emojis?.length || 0}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Stickers</span>
+                    <span class="stat-value">${
+                      stats.stickers?.length || 0
+                    }</span>
+                </div>
+            </div>
+        `;
+  } catch (error) {
+    console.error("Error fetching server stats:", error);
+    statsContainer.innerHTML = `
+            <div class="stats-error">
+                Failed to load server statistics
+            </div>
+        `;
+  }
+}
+
+// Helper function to create stats container
+function createStatsContainer(serverId) {
+  const container = document.createElement("div");
+  container.id = `stats-${serverId}`;
+  container.className = "server-stats";
+  container.style.display = "none";
+
+  // Add to existing server element
+  const serverElement = document.querySelector(
+    `[data-server-id="${serverId}"]`
+  );
+  serverElement.appendChild(container);
+
+  return container;
+}
