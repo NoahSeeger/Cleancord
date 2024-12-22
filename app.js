@@ -61,13 +61,7 @@ function createContainers() {
             <div id="member-servers">
                 <div class="list-header">
                     <h3 class="list-title">Servers You're In</h3>
-                    <div class="view-controls">
-                        <button class="view-toggle list-view active" title="List View">
-                            <span>📝</span>
-                        </button>
-                        <button class="view-toggle grid-view" title="Grid View">
-                            <span>📱</span>
-                        </button>
+                    <div class="sort-controls">
                         <select class="sort-select" id="sort-servers">
                             <option value="name-asc">Name (A-Z)</option>
                             <option value="name-desc">Name (Z-A)</option>
@@ -76,11 +70,38 @@ function createContainers() {
                         </select>
                     </div>
                 </div>
-                <div class="server-list list-view-active"></div>
+                <!-- Tab links -->
+                <div class="tab">
+                    <button class="tablinks active" onclick="openView(event, 'list-view')">List View</button>
+                    <button class="tablinks" onclick="openView(event, 'grid-view')">Grid View</button>
+                </div>
+                <!-- Tab content -->
+                <div id="list-view" class="tabcontent active">
+                    <div class="server-list list-view-active"></div>
+                </div>
+                <div id="grid-view" class="tabcontent">
+                    <div class="server-list grid-view-active"></div>
+                </div>
             </div>
         </div>
     `;
   document.body.appendChild(mainContainer);
+
+  // Add the openView function to window object
+  window.openView = function (evt, viewName) {
+    const tabcontent = document.getElementsByClassName("tabcontent");
+    for (let i = 0; i < tabcontent.length; i++) {
+      tabcontent[i].classList.remove("active");
+    }
+
+    const tablinks = document.getElementsByClassName("tablinks");
+    for (let i = 0; i < tablinks.length; i++) {
+      tablinks[i].classList.remove("active");
+    }
+
+    document.getElementById(viewName).classList.add("active");
+    evt.currentTarget.classList.add("active");
+  };
 
   // Add collapse functionality
   const collapseButton = mainContainer.querySelector(".collapse-button");
@@ -409,12 +430,21 @@ async function displayMode(mode, servers, token) {
       await processServers(ownedServers, ownedServersList);
       await processServers(memberServers, memberServersList);
     } else {
-      // Quick mode - just show basic info
+      // Quick mode - show basic info in both views
       ownedServers.forEach((server) => {
         ownedServersList.appendChild(createServerElement(server));
       });
+
+      // Create servers for both list and grid view
+      const listView = document.querySelector("#list-view .server-list");
+      const gridView = document.querySelector("#grid-view .server-list");
+
+      listView.innerHTML = "";
+      gridView.innerHTML = "";
+
       memberServers.forEach((server) => {
-        memberServersList.appendChild(createServerElement(server));
+        listView.appendChild(createServerElement(server));
+        gridView.appendChild(createServerElement(server).cloneNode(true));
       });
     }
 
