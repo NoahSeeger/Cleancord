@@ -2,39 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("discord_token");
   console.log("App.js - Token check:", token ? "Token exists" : "No token");
 
-  // First check if we have a code (in case we were redirected here from Discord)
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get("code");
-
-  if (code) {
-    console.log("App.js - OAuth code found, exchanging for token");
-    try {
-      const response = await fetch("/.netlify/functions/token-exchange", {
-        method: "POST",
-        body: JSON.stringify({ code }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Token exchange failed");
-      }
-
-      const data = await response.json();
-      localStorage.setItem("discord_token", data.access_token);
-      // Clean up URL without redirecting
-      window.history.replaceState({}, document.title, "/app.html");
-      token = data.access_token; // Update token for continued execution
-    } catch (error) {
-      console.error("App.js - Token exchange error:", error);
-      window.location.replace("index.html");
-      return;
-    }
-  }
-
   if (!token) {
-    console.log("App.js - No token found, redirecting to index.html");
     window.location.replace("index.html");
     return;
   }
@@ -42,17 +10,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     // Update nav and verify token
     await updateNavAuth();
-
-    // Verify token is valid
-    const verifyResponse = await fetch("https://discord.com/api/users/@me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!verifyResponse.ok) {
-      throw new Error("Invalid token");
-    }
 
     // Create containers for server display
     createContainers();
@@ -454,7 +411,6 @@ async function updateNavAuth() {
 
   if (token) {
     try {
-      // Fetch user data
       const response = await fetch("https://discord.com/api/users/@me", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -468,36 +424,7 @@ async function updateNavAuth() {
         navButton.textContent = "Sign Out";
         navButton.onclick = async (e) => {
           e.preventDefault();
-
-          try {
-            // Revoke the token
-            const revokeResponse = await fetch(
-              "https://discord.com/api/oauth2/token/revoke",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                  client_id: "1320071721579184200",
-                  client_secret: "P8Qnb023E0bi12P9QuYi4JfQBXtxoIXe",
-                  token: token,
-                }),
-              }
-            );
-
-            if (revokeResponse.ok) {
-              console.log("Successfully revoked Discord authorization");
-            } else {
-              console.error("Failed to revoke Discord authorization");
-            }
-          } catch (error) {
-            console.error("Error revoking token:", error);
-          }
-
-          // Remove token and redirect regardless of revocation success
-          localStorage.removeItem("discord_token");
-          window.location.href = "index.html";
+          await signOut(token);
         };
       } else {
         throw new Error("Failed to fetch user data");
@@ -505,14 +432,25 @@ async function updateNavAuth() {
     } catch (error) {
       console.error("Error fetching user data:", error);
       localStorage.removeItem("discord_token");
-      window.location.href = "index.html";
+      window.location.replace("index.html");
     }
-  } else {
-    userStatus.style.display = "none";
-    navButton.textContent = "Sign In";
-    navButton.onclick = (e) => {
-      e.preventDefault();
-      window.location.href = "index.html";
-    };
   }
+}
+
+async function signOut(token) {
+  try {
+    // Use Netlify function to revoke token
+    await fetch("/.netlify/functions/revoke-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    });
+  } catch (error) {
+    console.error("Error during sign out:", error);
+  }
+
+  localStorage.removeItem("discord_token");
+  window.location.replace("index.html");
 }
