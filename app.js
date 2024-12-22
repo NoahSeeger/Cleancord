@@ -61,7 +61,13 @@ function createContainers() {
             <div id="member-servers">
                 <div class="list-header">
                     <h3 class="list-title">Servers You're In</h3>
-                    <div class="sort-controls">
+                    <div class="view-controls">
+                        <button class="view-toggle list-view active" title="List View">
+                            <span>📝</span>
+                        </button>
+                        <button class="view-toggle grid-view" title="Grid View">
+                            <span>📱</span>
+                        </button>
                         <select class="sort-select" id="sort-servers">
                             <option value="name-asc">Name (A-Z)</option>
                             <option value="name-desc">Name (Z-A)</option>
@@ -70,7 +76,7 @@ function createContainers() {
                         </select>
                     </div>
                 </div>
-                <div class="server-list"></div>
+                <div class="server-list list-view-active"></div>
             </div>
         </div>
     `;
@@ -105,6 +111,27 @@ function createContainers() {
     const servers = Array.from(memberServersList.children);
 
     sortServers(servers, sortSelect.value);
+  });
+
+  // Add view toggle functionality
+  const viewToggles = mainContainer.querySelectorAll(".view-toggle");
+  const serverList = mainContainer.querySelector(
+    "#member-servers .server-list"
+  );
+
+  viewToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      viewToggles.forEach((t) => t.classList.remove("active"));
+      toggle.classList.add("active");
+
+      if (toggle.classList.contains("grid-view")) {
+        serverList.classList.remove("list-view-active");
+        serverList.classList.add("grid-view-active");
+      } else {
+        serverList.classList.remove("grid-view-active");
+        serverList.classList.add("list-view-active");
+      }
+    });
   });
 }
 
